@@ -1,131 +1,156 @@
-#Fast Excel
+## C# 使用NPOI操作Excel文件
 
-####Build
-[![Build status](https://ci.appveyor.com/api/projects/status/5cwbg9ffxqsdeguf/branch/master?svg=true)](https://ci.appveyor.com/project/mrjono1/fastexcel/branch/master)
+# 什么是NPOI？
 
-####Release
-[![License](http://img.shields.io/:license-MIT-blue.svg)](https://raw.githubusercontent.com/mrjono1/FastExcel/master/LICENSE)
-[![Nuget](https://img.shields.io/nuget/v/FastExcel.svg)](https://www.nuget.org/packages/FastExcel/)
-[![Nuget](https://img.shields.io/nuget/dt/FastExcel.svg)](https://www.nuget.org/packages/FastExcel/)
+> What’s NPOI
+> This project is the .NET version of POI Java project at http://poi.apache.org/. POI is an open source project which can help you read/write xls, doc, ppt files. It has a wide application.
+> For example, you can use it to
+> a. generate a Excel report without Microsoft Office suite installed on your server and more efficient than call Microsoft Excel ActiveX at background;
+> b. extract text from Office documents to help you implement full-text indexing feature (most of time this feature is used to create search engines).
+> c. extract images from Office documents
+> d. generate Excel sheets that contains formulas
 
-Insperation for this project came from https://github.com/jsegarra1971/SejExcelExport jsegarra1971 did a great job. I wanted to have my own crack at this problem.
+简而言之，言而简之，NPOI是源于一个用于读取xls,doc,ppt文档的POI 项目，POI是Java项目，后面因为有.Net的市场，于是将POI移植到.Net上。
 
-Currently provides a fast way of reading and writing to *.xlsx Excel files.
+# 优势：
 
-I am not using the Open XML SDK to interact with the data but going directly and editing the underlying xml files.
+**在没有安装Microsoft Office Excel的机子上也可以对Excel进行操作。另外一种方法是使用.NET自带的excel API，但是这种方法需要运行环境安装微软的excel才行。**
 
-.Net version 4.5 is required because it uses System.IO.Compression
+**NPOI尤其适合在服务器端生成数据文件！因为服务器一般是不安装office这么庞大的办公软件的**
 
-Check out the demo project for usage and benchmarking.
+# 使用方法：
 
-This project is not intended to be a replacement for full featured Excel packages with things like formatting, just light weight fast way of interacting with data in Excel.
+## 1.准备npoi 的 dll：
 
-Below are a few demos check out https://github.com/mrjono1/FastExcel/blob/master/FastExcelDemo/Program.cs for more.
+下载地址：
+https://npoi.codeplex.com/releases
 
-####Installation
+## 2.将NPOI的DLL导入工程中。
+
+右键**解决方案资源管理器**里面的**引用**
+![这里写图片描述](images\1)
+
+点击**添加引用**
+![这里写图片描述](images\3)
+
+点击“浏览”->”浏览“，打开文件对话框，选择所有的NPOI的dll文件
+![这里写图片描述](images\4)
+
+## 3.引用NPOI的命名空间。
+
 ```
-PM> Install-Package FastExcel
-```
-
-##Write Demo 1
-This demo uses Generic objects, ie any object you wish with public properties
-```C#
-using (FastExcel.FastExcel fastExcel = new FastExcel.FastExcel(outputFile))
-{
-    List<MyObject> objectList = new List<MyObject>();
-
-    for (int rowNumber = 1; rowNumber < NumberOfRecords; rowNumber++)
-    {
-        MyObject genericObject = new MyObject();
-        genericObject.StringColumn1 = "A string " + rowNumber.ToString();
-        genericObject.IntegerColumn2 = 45678854;
-        genericObject.DoubleColumn3 = 87.01d;
-        genericObject.ObjectColumn4 = DateTime.Now.ToLongTimeString();
-
-        objectList.Add(genericObject);
-    }
-    fastExcel.Write(objectList, "sheet3", true);
-}
+using NPOI.HSSF.UserModel;
+using NPOI.HPSF;
+using NPOI.POIFS.FileSystem;
+using NPOI.Util;1234
 ```
 
-##Write Demo 2
-This demo lets you specify exactly which cell you are writing to
+## 4.编程开发
 
-```C#
-// Get your template and output file paths
-FileInfo templateFile = new FileInfo("Template.xlsx");
-FileInfo outputFile = new FileInfo("C:\\Temp\\output.xlsx");
+不管是读还是写一个excel文件，都要先生成一个HSSFWorkbook对象。
+NPOI里面的管理层次为：workbook->worksheet->row->cell.
+类比关系型数据库就是：
 
-//Create a worksheet with some rows
-Worksheet worksheet = new Worksheet();
-List<Row> rows = new List<Row>();
-for (int rowNumber = 1; rowNumber < 100000; rowNumber++)
-{
-    List<Cell> cells = new List<Cell>();
-    for (int columnNumber = 1; columnNumber < 13; columnNumber++)
-    {
-        cells.Add(new Cell(columnNumber, columnNumber * DateTime.Now.Millisecond));
-    }
-    cells.Add(new Cell(13, "Hello" + rowNumber));
-    cells.Add(new Cell(14, "Some Text"));
- 
-    rows.Add(new Row(rowNumber, cells));
-}
-worksheet.Rows = rows;
+| NPOI      | 关系型数据库 |
+| --------- | ------------ |
+| workbook  | database     |
+| worksheet | table表      |
+| row       | record记录   |
+| cell      | field字段    |
 
+形象一点就是：
+![这里写图片描述](images\2)
+具体方法为：
 
-// Create an instance of FastExcel
-using (FastExcel.FastExcel fastExcel = new FastExcel.FastExcel(templateFile, outputFile))
-{
-    // Write the data
-    fastExcel.Write(worksheet, "sheet1");
-}
+**以现有excel文件数据为基础，创建一个workbook对象，这种方法可以读取这个excel文件的数据内容：**
+
+```
+HSSFWorkbook wb;
+FileStream file;
+file = new FileStream(filepath, FileMode.Open, FileAccess.Read);
+wb = new HSSFWorkbook(file);
+file.Close();12345
 ```
 
-##Read Demo
+可以发现是借助FileStream来读取excel文件的，其中的filepath指明excel文件的路径。
 
-```C#
-// Get the input file paths
-FileInfo inputFile = new FileInfo("C:\\Temp\\input.xlsx");
+**创新一个新的excel文件的workbook对象：**
 
-//Create a worksheet
-DataSet worksheet = null;
-
-// Create an instance of Fast Excel
-using (FastExcel.FastExcel fastExcel = new FastExcel.FastExcel(inputFile, true))
-{
-    // Read the data
-    worksheet = fastExcel.Read("sheet1");
-}
+```
+HSSFWorkbook wb;
+wb = new HSSFWorkbook();12
 ```
 
-##Update Demo
+在workbook的基础上，打开一个老的sheet,或者创建一个新的表。
+**打开老的sheet: wb.GetSheet(sheet的名称)**
 
-```C#
-// Get the input file paths
-FileInfo inputFile = new FileInfo("C:\\Temp\\input.xlsx");
-
-//Create a some rows in a worksheet
-Worksheet worksheet = new Worksheet();
-List<Row> rows = new List<Row>();
-                
-for (int rowNumber = 1; rowNumber < NumberOfRecords; rowNumber+= 50)
-{
-    List<Cell> cells = new List<Cell>();
-    for (int columnNumber = 1; columnNumber < 13; columnNumber+= 2)
-    {
-        cells.Add(new Cell(columnNumber, rowNumber));
-    }
-    cells.Add(new Cell(13, "Updated Row"));
-
-    rows.Add(new Row(rowNumber, cells));
-}
-worksheet.Rows = rows;
-
-// Create an instance of Fast Excel
-using (FastExcel.FastExcel fastExcel = new FastExcel.FastExcel(inputFile))
-{
-    // Read the data
-    fastExcel.Update(worksheet, "sheet1");
-}
 ```
+HSSFSheet sheet;
+sheet=wb.GetSheet("sheet1");12
+```
+
+**创建一个新的sheet:wb.CreateSheet(sheet的名称）**
+
+```
+HSSFSheet sheet;
+sheet=wb.CreateSheet("sheet1");12
+```
+
+现在就到具体操作某个行和列了。
+
+**创建某个行：CreateRow(i)，i是行号，从0开始计数**
+
+```
+sheet.CreateRow(i）1
+```
+
+**获取某一行：GetRow(i），i是行号，从0开始计数**
+
+**创建某一列： 需要在定位到行的基础上**
+
+CreateCell(j)，j是列号，从0开始计数
+
+```
+sheet.GetRow(i).CreateCell(j);在i行创建第j列1
+```
+
+**获取某一行：GetCell(j),j是列号，从0开始计数**
+
+```
+sheet.GetRow(i).GetCell(j)1
+```
+
+行和列都确定了，那就是对单元格的操作啦：
+
+**读单元格：**
+
+```
+sheet.GetRow(i).GetCell(j) 就会返回第i行j列的内容。1
+```
+
+**写单元格：**
+
+```
+sheet.GetRow(i).GetCell(j).SetCellValue(内容)1
+```
+
+**保存数据到文件中**
+
+```
+file = new FileStream(filepath, FileMode.Open, FileAccess.Write);
+wb.Write(file);
+file.Close();
+wb.Close()1234
+```
+
+其中workbook的写入 需要借助于FileStream来打开一个文件流，在创建FileStream的时候，我们可以传入数据的保存路径和文件名。
+
+wb.Write在实际写入数据。
+
+最后操作完成后需要关闭资源。
+
+# 总结：
+
+使用NPOI操作excel很方便，关键是 workbook,sheet,row,cell的层层定位。
+
+**另外 NPOI 使用 HSSFWorkbook 类来处理 xls，XSSFWorkbook 类来处理 xlsx，它们都继承接口 IWorkbook，因此可以通过 IWorkbook 来统一处理 xls 和 xlsx 格式的文件。**
