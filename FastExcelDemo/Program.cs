@@ -7,6 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
+using NPOI.HSSF.UserModel;
+using NPOI.HPSF;
+using NPOI.POIFS.FileSystem;
+using NPOI.Util;
+
 namespace FastExcelDemo
 {
     public class Program
@@ -67,6 +72,16 @@ namespace FastExcelDemo
 
             Console.WriteLine("Press any key to exit...");
             Console.ReadKey();
+        }
+        private void NpoiWriteDemo(string filepath) {
+            HSSFWorkbook wb;
+            FileStream file = new FileStream(filepath, FileMode.OpenOrCreate, FileAccess.ReadWrite);
+
+            wb = new HSSFWorkbook(file);
+            HSSFSheet sheet = (HSSFSheet)wb.CreateSheet("SHT0");
+
+
+            file.Close();
         }
 
         /*private void FastExcelAddWorksheet(FileInfo outputFile)
